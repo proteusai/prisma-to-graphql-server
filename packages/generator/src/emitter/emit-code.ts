@@ -57,5 +57,7 @@ export default async function emitCode(
   const dmmfDocument = new DmmfDocument(dmmf, options);
   console.log(dmmfDocument);
 
-  console.log(dmmfDocument.shouldGenerateBlock("enums"));
+  if(dmmfDocument.shouldGenerateBlock("enums")) {
+    log("Generating enums...");
+  }
 }
