@@ -1,0 +1,8 @@
+node_modules
+dist
+.env
+dmmf.json
+*.log
+.DS_Store
+src/styles/main.css
+prisma/docs
