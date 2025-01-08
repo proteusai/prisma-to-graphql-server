@@ -6,9 +6,10 @@ import path from 'path';
 import { CompilerOptions, Project, ScriptTarget, ModuleKind } from 'ts-morph';
 import { DmmfDocument } from './dmmf/document';
 import generateEnumFromDef, { generateGraphQLEnumFromDef } from './enum';
-import { enumsFolderName, modelsFolderName } from './config';
+import { enumsFolderName, modelsFolderName, resolversFolderName } from './config';
 import { generateEnumsBarrelFile, generateGraphQLEnumsBarrelFile, generateGraphQLModelsBarrelFile, generateModelsBarrelFile } from './imports';
 import generateObjectTypeClassFromModel, { generateGraphQLTypeFromModel } from './model-type-class';
+import { DMMF } from './dmmf/types';
 
 const baseCompilerOptions: CompilerOptions = {
   target: ScriptTarget.ES2021,
@@ -97,8 +98,8 @@ export default async function emitCode(
       const modelOutputType = dmmfDocument.schema.outputTypes.find(
         type => type.name === model.name,
       )!;
-      console.log(model);
-      console.log(modelOutputType);
+      // console.log(model);
+      // console.log(modelOutputType);
       return generateGraphQLTypeFromModel(
         project,
         baseDirPath,
@@ -116,6 +117,27 @@ export default async function emitCode(
       modelsBarrelExportSourceFile,
       dmmfDocument.datamodel.models.map(it => it.typeName),
     );
+  }
+
+  const resolversDirPath = path.resolve(baseDirPath, resolversFolderName);
+  let outputTypesToGenerate: DMMF.OutputType[] = [];
+  if (dmmfDocument.shouldGenerateBlock("outputs")) {
+    log("Generating output types...");
+    const rootTypes = dmmfDocument.schema.outputTypes.filter(type =>
+      ["Query", "Mutation"].includes(type.name),
+    );
+    const modelNames = dmmfDocument.datamodel.models.map(model => model.name);
+    outputTypesToGenerate = dmmfDocument.schema.outputTypes.filter(
+      // skip generating models and root resolvers
+      type => !modelNames.includes(type.name) && !rootTypes.includes(type),
+    );
+    console.log(outputTypesToGenerate);
+    const outputTypesFieldsArgsToGenerate = outputTypesToGenerate
+      .map(it => it.fields)
+      .reduce((a, b) => a.concat(b), [])
+      .filter(it => it.argsTypeName);
+    console.log(outputTypesFieldsArgsToGenerate);
+    // TODO: continue from line 170
   }
 
   await project.save();
