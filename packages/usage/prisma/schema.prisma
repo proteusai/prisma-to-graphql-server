@@ -1,6 +1,6 @@
 generator custom_generator {
   provider = "node ../../node_modules/prisma-to-graphql-server"
-  output   = "../types"
+  output   = "../output"
 }
 
 datasource db {
@@ -12,6 +12,7 @@ model User {
   id    Int     @id @default(autoincrement())
   email String  @unique
   name  String?
+  hobbies String[]
 }
 
 enum NotificationType {
