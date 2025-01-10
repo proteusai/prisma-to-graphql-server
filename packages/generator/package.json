@@ -19,7 +19,7 @@
   },
   "dependencies": {
     "@prisma/client": "5.18.0",
-    "@prisma/generator-helper": "5.18.0",
+    "@prisma/generator-helper": "6.2.1",
     "@prisma/internals": "5.18.0",
     "@prisma/sdk": "^4.1.0-integration-fix-disconnect-dmmf.1",
     "pluralize": "^8.0.0",
