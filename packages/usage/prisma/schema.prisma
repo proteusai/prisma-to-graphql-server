@@ -1,6 +1,6 @@
 generator custom_generator {
   provider = "node ../../node_modules/prisma-to-graphql-server"
-  output   = "../types"
+  output   = "../output"
 }
 
 datasource db {
@@ -12,6 +12,23 @@ model User {
   id    Int     @id @default(autoincrement())
   email String  @unique
   name  String?
+  hobbies String[]
+  posts Post[]
+}
+
+model AppIntegration {
+  id              Int     @id @default(autoincrement())
+  appId           String
+  appSecret       String // helps us verify that the incoming message is from the app
+  configSchema    Json   // JSON schema for the configuration; can hold default values and user-specific values
+  createdAt       DateTime      @default(now())
+  description     String?
+  installationId  String // helps us identify the installation; it could be a user's phone number (for WhatsApp) or a Slack token (for Slack)
+  image           String?
+  name            String
+  updatedAt       DateTime      @updatedAt
+  webhook         String
+  webhookIsVerified Boolean  @default(false)
 }
 
 enum NotificationType {
@@ -31,4 +48,26 @@ enum Language {
   Go
   Python
   Cpp
+}
+
+model Post {
+  id          Int     @id @default(autoincrement())
+  author        User    @relation(fields: [authorId], references: [id])
+  authorId    Int
+  content     String
+  createdAt   DateTime      @default(now())
+  language    Language
+  title       String
+  updatedAt   DateTime      @updatedAt
+  comments    Comment[]
+}
+
+model Comment {
+  id          Int     @id @default(autoincrement())
+  authorId    Int
+  content     String
+  createdAt   DateTime      @default(now())
+  post       Post    @relation(fields: [postId], references: [id])
+  postId      Int
+  updatedAt   DateTime      @updatedAt
 }

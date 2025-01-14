@@ -10,6 +10,7 @@ import { parseString, parseStringArray, parseStringBoolean, parseStringEnum } fr
 import { ALL_EMIT_BLOCK_KINDS } from './emitter/emit-block'
 import emitCode from './emitter/emit-code'
 import { parseEnvValue, getDMMF, logger } from '@prisma/internals'
+import removeDir from './utils/removeDir'
 
 const { version } = require('../package.json')
 
@@ -26,7 +27,7 @@ generatorHandler({
     console.log(options);
     const outputDir = parseEnvValue(options.generator.output as EnvValue);
     await asyncFs.mkdir(outputDir, { recursive: true });
-    // TODO: await removeDir(outputDir, true);
+    await removeDir(outputDir, true);
 
     // const prismaClientProvider = options.otherGenerators.find(
     //   (gen) => parseEnvValue(gen.provider) === 'prisma-client-js',
@@ -107,7 +108,7 @@ generatorHandler({
     await emitCode(options.dmmf, {
       ...externalConfig,
       ...internalConfig,
-    });
+    }, console.log);
     return '';
 
     // -----------------------------------
