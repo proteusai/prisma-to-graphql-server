@@ -44,7 +44,7 @@ export function generateOutputTypeClassFromType(
   generateModelsImports(
     sourceFile,
     outputObjectModelTypes.map(field => field.outputType.type),
-    2,
+    1,
   );
   generateEnumsImports(
     sourceFile,
@@ -52,7 +52,7 @@ export function generateOutputTypeClassFromType(
       .map(field => field.outputType)
       .filter(fieldType => fieldType.location === "enumTypes")
       .map(fieldType => fieldType.type),
-    2,
+    1,
   );
 
   sourceFile.addClass({
@@ -171,7 +171,7 @@ export function generateInputTypeClassFromType(
       .map(field => field.selectedInputType)
       .filter(fieldType => fieldType.location === "enumTypes")
       .map(fieldType => fieldType.type as string),
-    2,
+    1,
   );
 
   const fieldsToEmit = inputType.fields.filter(field => !field.isOmitted);

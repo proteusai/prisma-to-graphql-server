@@ -5,7 +5,7 @@ import {
 } from "./imports";
 import { GeneratorOptions } from "./options";
 
-export function generateHelpersFile(
+export function generateHelpersFile_GqlServer(
   sourceFile: SourceFile,
   options: GeneratorOptions,
 ) {

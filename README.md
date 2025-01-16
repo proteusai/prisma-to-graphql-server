@@ -17,3 +17,7 @@ Prisma generator to generate GraphQL server from Prisma schema
 - [https://casperiv.dev/blog/how-to-create-a-prisma-generator](https://casperiv.dev/blog/how-to-create-a-prisma-generator)
 - [https://lhowsam.com/blog/how-to-build-a-custom-prisma-generator](https://lhowsam.com/blog/how-to-build-a-custom-prisma-generator)
 - [https://github.com/aldahick/athena](https://github.com/aldahick/athena)
+
+--------
+
+- [https://medium.com/grandstack/graphql-resolveinfo-deep-dive-1b3144075866](https://medium.com/grandstack/graphql-resolveinfo-deep-dive-1b3144075866)

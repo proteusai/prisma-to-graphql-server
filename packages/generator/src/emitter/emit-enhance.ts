@@ -1,6 +1,6 @@
 import { SourceFile, VariableDeclarationKind, Writers } from 'ts-morph';
 import {
-  crudResolversFolderName,
+  crudFolderName,
   inputsFolderName,
   modelsFolderName,
   outputsFolderName,
@@ -42,11 +42,11 @@ export function generateEnhanceMap(
 
   if (dmmfDocument.shouldGenerateBlock("crudResolvers")) {
     sourceFile.addImportDeclaration({
-      moduleSpecifier: `./${resolversFolderName}/${crudResolversFolderName}/resolvers-crud.index`,
+      moduleSpecifier: `./${resolversFolderName}/${crudFolderName}/resolvers-crud.index`,
       namespaceImport: "crudResolvers",
     });
     sourceFile.addImportDeclaration({
-      moduleSpecifier: `./${resolversFolderName}/${crudResolversFolderName}/args.index`,
+      moduleSpecifier: `./${resolversFolderName}/${crudFolderName}/args.index`,
       namespaceImport: "argsTypes",
     });
     sourceFile.addVariableStatement({
@@ -67,7 +67,7 @@ export function generateEnhanceMap(
       trailingTrivia: "\r\n",
     });
     sourceFile.addImportDeclaration({
-      moduleSpecifier: `./${resolversFolderName}/${crudResolversFolderName}/resolvers-actions.index`,
+      moduleSpecifier: `./${resolversFolderName}/${crudFolderName}/resolvers-actions.index`,
       namespaceImport: "actionResolvers",
     });
     sourceFile.addVariableStatement({

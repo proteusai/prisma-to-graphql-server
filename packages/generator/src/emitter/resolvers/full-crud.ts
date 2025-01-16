@@ -1,21 +1,21 @@
-import { OptionalKind, MethodDeclarationStructure, Project } from 'ts-morph';
 import path from 'path';
+import { MethodDeclarationStructure, OptionalKind, Project } from 'ts-morph';
 
-import { resolversFolderName, crudResolversFolderName } from '../config';
-import {
-  generateTypeGraphQLImport,
-  generateArgsImports,
-  generateModelsImports,
-  generateOutputsImports,
-  generateGraphQLInfoImport,
-  generateHelpersFileImport,
-} from '../imports';
-import { generateCrudResolverClassMethodDeclaration } from './helpers';
+import { crudFolderName, resolversFolderName } from '../config';
 import { DmmfDocument } from '../dmmf/document';
 import { DMMF } from '../dmmf/types';
+import {
+  generateArgsImports,
+  generateGraphQLInfoImport,
+  generateHelpersFileImport,
+  generateModelsImports,
+  generateOutputsImports,
+  generateTypesFileImport
+} from '../imports';
 import { GeneratorOptions } from '../options';
+import { generateCrudResolverClassMethodDeclaration_Server } from './helpers';
 
-export default function generateCrudResolverClassFromMapping(
+export default function generateCrudResolverClassFromMapping_Server(
   project: Project,
   baseDirPath: string,
   mapping: DMMF.ModelMapping,
@@ -26,7 +26,7 @@ export default function generateCrudResolverClassFromMapping(
   const resolverDirPath = path.resolve(
     baseDirPath,
     resolversFolderName,
-    crudResolversFolderName,
+    crudFolderName,
     model.typeName,
   );
   const filePath = path.resolve(resolverDirPath, `${mapping.resolverName}.ts`);
@@ -34,7 +34,6 @@ export default function generateCrudResolverClassFromMapping(
     overwrite: true,
   });
 
-  // generateTypeGraphQLImport(sourceFile);
   generateGraphQLInfoImport(sourceFile);
   generateArgsImports(
     sourceFile,
@@ -44,6 +43,7 @@ export default function generateCrudResolverClassFromMapping(
     0,
   );
   generateHelpersFileImport(sourceFile, 3);
+  generateTypesFileImport(sourceFile, 3);
 
   const distinctOutputTypesNames = [
     ...new Set(mapping.actions.map(it => it.outputTypeName)),
@@ -54,7 +54,7 @@ export default function generateCrudResolverClassFromMapping(
   const otherOutputTypeNames = distinctOutputTypesNames.filter(
     typeName => !dmmfDocument.isModelTypeName(typeName),
   );
-  generateModelsImports(sourceFile, modelOutputTypeNames, 3);
+  generateModelsImports(sourceFile, modelOutputTypeNames, 2);
   generateOutputsImports(sourceFile, otherOutputTypeNames, 2);
 
   sourceFile.addClass({
@@ -68,7 +68,7 @@ export default function generateCrudResolverClassFromMapping(
     // ],
     methods: mapping.actions.map<OptionalKind<MethodDeclarationStructure>>(
       action =>
-        generateCrudResolverClassMethodDeclaration(
+        generateCrudResolverClassMethodDeclaration_Server(
           action,
           mapping,
           dmmfDocument,
