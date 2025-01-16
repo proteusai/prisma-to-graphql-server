@@ -2,19 +2,19 @@ import { OptionalKind, Project, Writers, PropertyDeclarationStructure, GetAccess
 import { DMMF } from './dmmf/types';
 import { DmmfDocument } from './dmmf/document';
 import path from 'path';
-import { modelsFolderName } from './config';
+import { modelsFolderName, resolversFolderName } from './config';
 import { generateCustomScalarsImport, generateEnumsImports, generateGQLImport, generateGraphQLScalarsImport, generateModelsImports, generatePrismaNamespaceImport, generateResolversOutputsImports, generateTypeGraphQLImport } from './imports';
 import { convertNewLines } from './helpers';
 
 // TODO: used by clients
-export default function generateObjectTypeClassFromModel(
+export default function generateObjectTypeClassFromModel_Server(
   project: Project,
   baseDirPath: string,
   model: DMMF.Model,
   modelOutputType: DMMF.OutputType,
   dmmfDocument: DmmfDocument,
 ) {
-  const dirPath = path.resolve(baseDirPath, modelsFolderName);
+  const dirPath = path.resolve(baseDirPath, resolversFolderName, modelsFolderName);
   const filePath = path.resolve(dirPath, `${model.typeName}.ts`);
   const sourceFile = project.createSourceFile(filePath, undefined, {
     overwrite: true,
@@ -169,73 +169,4 @@ export default function generateObjectTypeClassFromModel(
       docs: [{ description: `\n${convertNewLines(model.docs)}` }],
     }),
   });
-}
-
-export function generateGraphQLTypeFromModel(
-  project: Project,
-  baseDirPath: string,
-  model: DMMF.Model,
-  modelOutputType: DMMF.OutputType,
-  dmmfDocument: DmmfDocument,
-) {
-  const dirPath = path.resolve(baseDirPath, modelsFolderName);
-  const filePath = path.resolve(dirPath, `${model.typeName}.ts`);
-  const sourceFile = project.createSourceFile(filePath, undefined, {
-    overwrite: true,
-  });
-  generateGQLImport(sourceFile);
-
-  // generateTypeGraphQLImport(sourceFile);
-//   generateGraphQLScalarsImport(sourceFile);
-//   generatePrismaNamespaceImport(sourceFile, dmmfDocument.options, 1);
-  // generateCustomScalarsImport(sourceFile, 1);
-  generateModelsImports(
-    sourceFile,
-    model.fields
-      .filter(field => field.location === "outputObjectTypes")
-      .filter(field => field.type !== model.name)
-      .map(field =>
-        dmmfDocument.isModelName(field.type)
-          ? dmmfDocument.getModelTypeName(field.type)!
-          : field.type,
-      ),
-  );
-  generateEnumsImports(
-    sourceFile,
-    model.fields
-      .filter(field => field.location === "enumTypes")
-      .map(field => field.type),
-  );
-
-  const countField = modelOutputType.fields.find(it => it.name === "_count");
-  const shouldEmitCountField =
-    countField !== undefined &&
-    dmmfDocument.shouldGenerateBlock("crudResolvers");
-  if (shouldEmitCountField) {
-    generateResolversOutputsImports(sourceFile, [countField.typeGraphQLType]);
-  }
-
-  sourceFile.addVariableStatement({
-          // isExported: true,
-          declarationKind: VariableDeclarationKind.Const,
-          ...(model.docs && {
-            docs: [{ description: `\n${convertNewLines(model.docs)}` }],
-          }),
-          declarations: [
-            {
-              name: model.typeName,
-              // type: enumDef.values.map(({ name }) => `"${name}"`).join(" | "),
-              initializer: `gql\`
-  type ${model.typeName} {
-    ${model.fields.map(({ name, type, isList, isRequired }) => `${name}: ${isList ? `[${type}]` : type}${isRequired ? '!' : ''}`).join("\n")}
-  }
-  \``,
-            },
-          ],
-        });
-
-        sourceFile.addExportAssignment({
-            isExportEquals: false,
-            expression: model.typeName,
-        });
 }

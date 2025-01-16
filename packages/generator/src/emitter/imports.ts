@@ -1,7 +1,7 @@
 import path from 'path';
 import { ExportDeclarationStructure, ImportDeclarationStructure, OptionalKind, SourceFile, VariableDeclarationKind } from 'ts-morph';
 import { GeneratorOptions } from './options';
-import { argsFolderName, crudResolversFolderName, enumsFolderName, inputsFolderName, modelsFolderName, outputsFolderName, relationsResolversFolderName, resolversFolderName } from './config';
+import { argsFolderName, crudFolderName, enumsFolderName, inputsFolderName, modelsFolderName, outputsFolderName, relationsResolversFolderName, resolversFolderName, typeDefsFolderName } from './config';
 import { EmitBlockKind } from './emit-block';
 import { GenerateMappingData } from './types';
 
@@ -41,6 +41,20 @@ export function generateGraphQLScalarTypeImport(sourceFile: SourceFile) {
   });
 }
 
+export function generateGraphQLSubscriptionsImport(sourceFile: SourceFile) {
+  sourceFile.addImportDeclaration({
+    moduleSpecifier: "graphql-subscriptions",
+    namedImports: ["PubSub"],
+  });
+}
+
+export function generateGraphQLWebSocketImport(sourceFile: SourceFile) {
+  sourceFile.addImportDeclaration({
+    moduleSpecifier: "graphql-ws/lib/server",
+    namedImports: ["Context"],
+  });
+}
+
 export function generateCustomScalarsImport(sourceFile: SourceFile, level = 0) {
   sourceFile.addImportDeclaration({
     moduleSpecifier:
@@ -63,6 +77,17 @@ export function generateHelpersFileImport(sourceFile: SourceFile, level = 0) {
   });
 }
 
+export function generateTypesFileImport(sourceFile: SourceFile, level = 0) {
+  sourceFile.addImportDeclaration({
+    moduleSpecifier:
+      (level === 0 ? "./" : "") +
+      path.posix.join(...Array(level).fill(".."), "types"),
+    namedImports: [
+      "GraphQLContext",
+    ],
+  });
+}
+
 export function generatePrismaNamespaceImport(
   sourceFile: SourceFile,
   options: GeneratorOptions,
@@ -77,6 +102,24 @@ export function generatePrismaNamespaceImport(
           options.customPrismaImportPath ?? options.relativePrismaOutputPath,
         ),
     namedImports: ["Prisma"],
+  });
+}
+
+export function generatePrismaClientImport(
+  sourceFile: SourceFile,
+  options: GeneratorOptions,
+  level = 0,
+) {
+  sourceFile.addImportDeclaration({
+    // moduleSpecifier: "@prisma/client",
+    moduleSpecifier:
+      options.absolutePrismaOutputPath ??
+      (level === 0 ? "./" : "") +
+        path.posix.join(
+          ...Array(level).fill(".."),
+          options.customPrismaImportPath ?? options.relativePrismaOutputPath,
+        ),
+    namedImports: ["PrismaClient"],
   });
 }
 
@@ -246,27 +289,27 @@ export function generateOutputsBarrelFile(
   }
 }
 
-export function generateIndexFile(
+export function generateIndexFile_GqlServer(
   sourceFile: SourceFile,
   hasSomeRelations: boolean,
   blocksToEmit: EmitBlockKind[],
 ) {
   if (blocksToEmit.includes("enums")) {
     sourceFile.addExportDeclaration({
-      moduleSpecifier: `./${enumsFolderName}`,
+      moduleSpecifier: `./${resolversFolderName}/${enumsFolderName}`,
     });
   }
   if (blocksToEmit.includes("models")) {
     sourceFile.addExportDeclaration({
-      moduleSpecifier: `./${modelsFolderName}`,
+      moduleSpecifier: `./${resolversFolderName}/${modelsFolderName}`,
     });
   }
   if (blocksToEmit.includes("crudResolvers")) {
-    sourceFile.addExportDeclaration({
-      moduleSpecifier: `./${resolversFolderName}/${crudResolversFolderName}`,
-    });
+    // sourceFile.addExportDeclaration({
+    //   moduleSpecifier: `./${resolversFolderName}/${crudFolderName}`,
+    // });
     sourceFile.addImportDeclaration({
-      moduleSpecifier: `./${resolversFolderName}/${crudResolversFolderName}/resolvers-crud.index`,
+      moduleSpecifier: `./${resolversFolderName}/${crudFolderName}/resolvers-crud.index`,
       namespaceImport: "crudResolversImport",
     });
     sourceFile.addVariableStatement({
@@ -275,7 +318,25 @@ export function generateIndexFile(
       declarations: [
         {
           name: "crudResolvers",
-          initializer: `Object.values(crudResolversImport) as unknown as NonEmptyArray<Function>`,
+          initializer: `Object.values(crudResolversImport) as unknown as Array<Function>`,
+        },
+      ],
+    });
+    // *************
+    // sourceFile.addExportDeclaration({
+    //   moduleSpecifier: `./${typeDefsFolderName}/${crudFolderName}`,
+    // });
+    sourceFile.addImportDeclaration({
+      moduleSpecifier: `./${typeDefsFolderName}/${crudFolderName}/typedefs-crud.index`,
+      namespaceImport: "crudTypeDefsImport",
+    });
+    sourceFile.addVariableStatement({
+      isExported: true,
+      declarationKind: VariableDeclarationKind.Const,
+      declarations: [
+        {
+          name: "crudTypeDefs",
+          initializer: `Object.values(crudTypeDefsImport) as unknown as Array<Function>`,
         },
       ],
     });
@@ -294,7 +355,7 @@ export function generateIndexFile(
       declarations: [
         {
           name: "relationResolvers",
-          initializer: `Object.values(relationResolversImport) as unknown as NonEmptyArray<Function>`,
+          initializer: `Object.values(relationResolversImport) as unknown as Array<Function>`,
         },
       ],
     });
@@ -314,12 +375,12 @@ export function generateIndexFile(
     { moduleSpecifier: `./enhance` },
     { moduleSpecifier: `./scalars` },
   ]);
-  sourceFile.addImportDeclarations([
-    {
-      moduleSpecifier: `type-graphql`,
-      namedImports: ["NonEmptyArray"],
-    },
-  ]);
+  // sourceFile.addImportDeclarations([
+  //   {
+  //     moduleSpecifier: `type-graphql`,
+  //     namedImports: ["NonEmptyArray"],
+  //   },
+  // ]);
 
   if (
     blocksToEmit.includes("crudResolvers") ||
@@ -338,7 +399,20 @@ export function generateIndexFile(
                 ? "...relationResolvers,"
                 : ""
             }
-            ] as unknown as NonEmptyArray<Function>`,
+            ] as unknown as Array<Function>`,
+        },
+      ],
+    });
+    // *************
+    sourceFile.addVariableStatement({
+      isExported: true,
+      declarationKind: VariableDeclarationKind.Const,
+      declarations: [
+        {
+          name: "typeDefs",
+          initializer: `[
+            ${blocksToEmit.includes("crudResolvers") ? "...crudTypeDefs," : ""}
+            ] as unknown as Array<Function>`,
         },
       ],
     });
@@ -378,6 +452,21 @@ export function generateResolversActionsBarrelFile(
       }
     });
 }
+export function generateTypeDefsBarrelFile(
+  sourceFile: SourceFile,
+  resolversData: GenerateMappingData[],
+) {
+  resolversData
+    .sort((a, b) =>
+      a.modelName > b.modelName ? 1 : a.modelName < b.modelName ? -1 : 0,
+    )
+    .forEach(({ modelName, resolverName }) => {
+      sourceFile.addExportDeclaration({
+        moduleSpecifier: `./${modelName}/${resolverName.replace('Resolver', 'TypeDef')}`,
+        namedExports: [resolverName.replace('Resolver', 'TypeDef')],
+      });
+    });
+}
 
 export function generateResolversIndexFile(
   sourceFile: SourceFile,
@@ -392,6 +481,24 @@ export function generateResolversIndexFile(
   } else {
     sourceFile.addExportDeclarations([
       { moduleSpecifier: `./resolvers.index` },
+    ]);
+  }
+  if (hasSomeArgs) {
+    sourceFile.addExportDeclarations([{ moduleSpecifier: `./args.index` }]);
+  }
+}
+export function generateTypeDefsIndexFile(
+  sourceFile: SourceFile,
+  type: "crud" | "relations",
+  hasSomeArgs: boolean,
+) {
+  if (type === "crud") {
+    sourceFile.addExportDeclarations([
+      { moduleSpecifier: `./typedefs-crud.index` },
+    ]);
+  } else {
+    sourceFile.addExportDeclarations([
+      { moduleSpecifier: `./typedefs.index` },
     ]);
   }
   if (hasSomeArgs) {

@@ -1,22 +1,20 @@
+import path from 'path';
 import {
-  PropertyDeclarationStructure,
   OptionalKind,
   Project,
-  Writers,
+  PropertyDeclarationStructure
 } from 'ts-morph';
-import path from 'path';
 
 import { argsFolderName } from './config';
-import {
-  generateTypeGraphQLImport,
-  generateInputsImports,
-  generateEnumsImports,
-  generateGraphQLScalarsImport,
-} from './imports';
 import { DmmfDocument } from './dmmf/document';
 import { DMMF } from './dmmf/types';
+import {
+  generateEnumsImports,
+  generateGraphQLScalarsImport,
+  generateInputsImports
+} from './imports';
 
-export default function generateArgsTypeClassFromArgs(
+export default function generateArgsTypeClassFromArgs_Server(
   project: Project,
   generateDirPath: string,
   fields: readonly DMMF.SchemaArg[],
@@ -30,7 +28,6 @@ export default function generateArgsTypeClassFromArgs(
     overwrite: true,
   });
 
-  generateTypeGraphQLImport(sourceFile);
   generateGraphQLScalarsImport(sourceFile);
   generateInputsImports(
     sourceFile,
@@ -46,18 +43,18 @@ export default function generateArgsTypeClassFromArgs(
       .map(field => field.selectedInputType)
       .filter(argType => argType.location === "enumTypes")
       .map(argType => argType.type as string),
-    4,
+    3,
   );
 
   sourceFile.addClass({
     name: argsTypeName,
     isExported: true,
-    decorators: [
-      {
-        name: "TypeGraphQL.ArgsType",
-        arguments: [],
-      },
-    ],
+    // decorators: [
+    //   {
+    //     name: "TypeGraphQL.ArgsType",
+    //     arguments: [],
+    //   },
+    // ],
     properties: fields.map<OptionalKind<PropertyDeclarationStructure>>(arg => {
       return {
         name: arg.typeName,
@@ -65,17 +62,17 @@ export default function generateArgsTypeClassFromArgs(
         hasExclamationToken: arg.isRequired,
         hasQuestionToken: !arg.isRequired,
         trailingTrivia: "\r\n",
-        decorators: [
-          {
-            name: "TypeGraphQL.Field",
-            arguments: [
-              `_type => ${arg.typeGraphQLType}`,
-              Writers.object({
-                nullable: `${!arg.isRequired}`,
-              }),
-            ],
-          },
-        ],
+        // decorators: [
+        //   {
+        //     name: "TypeGraphQL.Field",
+        //     arguments: [
+        //       `_type => ${arg.typeGraphQLType}`,
+        //       Writers.object({
+        //         nullable: `${!arg.isRequired}`,
+        //       }),
+        //     ],
+        //   },
+        // ],
       };
     }),
   });

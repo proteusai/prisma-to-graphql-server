@@ -4,7 +4,7 @@ import { DmmfDocument } from '../dmmf/document';
 import { DMMF } from '../dmmf/types';
 import { GeneratorOptions } from '../options';
 
-export function generateCrudResolverClassMethodDeclaration(
+export function generateCrudResolverClassMethodDeclaration_Server(
   action: DMMF.Action,
   mapping: DMMF.ModelMapping,
   dmmfDocument: DmmfDocument,
@@ -26,33 +26,46 @@ export function generateCrudResolverClassMethodDeclaration(
     //   },
     // ],
     parameters: [
+      // object
+      {
+        name: "_",
+        type: "any",
+      },
+      // args
+      ...(!action.argsTypeName
+        ? [
+          {
+            name: "args",
+            type: "any",
+          },
+        ]
+        : [
+          {
+            name: "{ args }",
+            type: `{ args: ${action.argsTypeName} }`,
+            // decorators: [
+            //   {
+            //     name: "TypeGraphQL.Args",
+            //     arguments: generatorOptions.emitRedundantTypesInfo
+            //       ? [`_type => ${action.argsTypeName}`]
+            //       : [],
+            //   },
+            // ],
+          },
+      ]),
+      // context
       {
         name: "ctx",
         // TODO: import custom `ContextType`
-        type: "any",
+        type: "GraphQLContext",
         // decorators: [{ name: "TypeGraphQL.Ctx", arguments: [] }],
       },
+      // info
       {
         name: "info",
         type: "GraphQLResolveInfo",
         // decorators: [{ name: "TypeGraphQL.Info", arguments: [] }],
       },
-      ...(!action.argsTypeName
-        ? []
-        : [
-            {
-              name: "args",
-              type: action.argsTypeName,
-              // decorators: [
-              //   {
-              //     name: "TypeGraphQL.Args",
-              //     arguments: generatorOptions.emitRedundantTypesInfo
-              //       ? [`_type => ${action.argsTypeName}`]
-              //       : [],
-              //   },
-              // ],
-            },
-          ]),
     ],
     statements:
       action.kind === DMMF.ModelAction.aggregate

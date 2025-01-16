@@ -5,20 +5,25 @@ import { getBlocksToEmit } from './emit-block';
 import path from 'path';
 import { CompilerOptions, Project, ScriptTarget, ModuleKind } from 'ts-morph';
 import { DmmfDocument } from './dmmf/document';
-import generateEnumFromDef, { generateGraphQLEnumFromDef } from './enum';
-import { argsFolderName, crudResolversFolderName, enumsFolderName, inputsFolderName, modelsFolderName, outputsFolderName, relationsResolversFolderName, resolversFolderName } from './config';
-import { generateArgsBarrelFile, generateArgsIndexFile, generateEnumsBarrelFile, generateGraphQLEnumsBarrelFile, generateGraphQLModelsBarrelFile, generateIndexFile, generateInputsBarrelFile, generateModelsBarrelFile, generateOutputsBarrelFile, generateResolversActionsBarrelFile, generateResolversBarrelFile, generateResolversIndexFile } from './imports';
-import generateObjectTypeClassFromModel, { generateGraphQLTypeFromModel } from './model-type-class';
+import generateEnumFromDef_Server from './enum';
+import { argsFolderName, crudFolderName, enumsFolderName, inputsFolderName, modelsFolderName, outputsFolderName, relationsResolversFolderName, resolversFolderName, typeDefsFolderName } from './config';
+import { generateArgsBarrelFile, generateArgsIndexFile, generateEnumsBarrelFile, generateGraphQLEnumsBarrelFile, generateGraphQLModelsBarrelFile, generateIndexFile_GqlServer, generateInputsBarrelFile, generateModelsBarrelFile, generateOutputsBarrelFile, generateResolversActionsBarrelFile, generateResolversBarrelFile, generateResolversIndexFile, generateTypeDefsBarrelFile, generateTypeDefsIndexFile } from './imports';
+import generateObjectTypeClassFromModel_Server from './model-type-class';
 import { DMMF } from './dmmf/types';
 import { generateInputTypeClassFromType, generateOutputTypeClassFromType } from './type-class';
-import generateArgsTypeClassFromArgs from './args-class';
+import generateArgsTypeClassFromArgs_Server from './args-class';
 import generateRelationsResolverClassesFromModel from './resolvers/relations';
 import { GenerateMappingData } from './types';
-import generateCrudResolverClassFromMapping from './resolvers/full-crud';
-import generateActionResolverClass from './resolvers/separate-action';
-import { generateEnhanceMap } from './emit-enhance';
-import { generateCustomScalars } from './emit-scalars';
-import { generateHelpersFile } from './emit-helpers';
+import generateCrudResolverClassFromMapping_Server from './resolvers/full-crud';
+import generateActionResolverClass_Server from './resolvers/separate-action';
+import { generateEnhanceMap as generateEnhanceMap_GqlServer } from './emit-enhance';
+import { generateCustomScalars as generateCustomScalars_GqlServer } from './emit-scalars';
+import { generateHelpersFile_GqlServer } from './emit-helpers';
+import generateCrudTypeDefClassFromMapping_GqlServer from './typedefs/full-crud';
+import { generateTypesFile_GqlServer } from './emit-types';
+import generateArgsTypeTypeDefFromArgs_Server from './arg-typedef';
+import generateEnumFromDef_GqlServer from './enum-typedef';
+import { generateObjectTypeDefFromModel_GqlServer } from './model-type-typedef';
 
 const baseCompilerOptions: CompilerOptions = {
   target: ScriptTarget.ES2021,
@@ -79,13 +84,17 @@ export default async function emitCode(
     const datamodelEnumNames = dmmfDocument.datamodel.enums.map(
       enumDef => enumDef.typeName,
     );
-    dmmfDocument.datamodel.enums.forEach(enumDef =>
-      generateEnumFromDef(project, baseDirPath, enumDef),
-    );
+    dmmfDocument.datamodel.enums.forEach(enumDef => {
+      generateEnumFromDef_Server(project, baseDirPath, enumDef);
+      generateEnumFromDef_GqlServer(project, baseDirPath, enumDef);
+    });
     dmmfDocument.schema.enums
       // skip enums from datamodel
       .filter(enumDef => !datamodelEnumNames.includes(enumDef.typeName))
-      .forEach(enumDef => generateEnumFromDef(project, baseDirPath, enumDef));
+      .forEach(enumDef => {
+        generateEnumFromDef_Server(project, baseDirPath, enumDef);
+        generateEnumFromDef_GqlServer(project, baseDirPath, enumDef);
+      });
       const emittedEnumNames = [
         ...new Set([
           ...dmmfDocument.schema.enums.map(it => it.typeName),
@@ -93,7 +102,7 @@ export default async function emitCode(
         ]),
       ];
       const enumsBarrelExportSourceFile = project.createSourceFile(
-        path.resolve(baseDirPath, enumsFolderName, "index.ts"),
+        path.resolve(baseDirPath, resolversFolderName, enumsFolderName, "index.ts"),
         undefined,
         { overwrite: true },
       );
@@ -109,7 +118,14 @@ export default async function emitCode(
       )!;
       // console.log(model);
       // console.log(modelOutputType);
-      return generateObjectTypeClassFromModel(
+      generateObjectTypeClassFromModel_Server(
+        project,
+        baseDirPath,
+        model,
+        modelOutputType,
+        dmmfDocument,
+      );
+      generateObjectTypeDefFromModel_GqlServer(
         project,
         baseDirPath,
         model,
@@ -118,7 +134,7 @@ export default async function emitCode(
       );
     });
     const modelsBarrelExportSourceFile = project.createSourceFile(
-      path.resolve(baseDirPath, modelsFolderName, "index.ts"),
+      path.resolve(baseDirPath, resolversFolderName, modelsFolderName, "index.ts"),
       undefined,
       { overwrite: true },
     );
@@ -173,7 +189,7 @@ export default async function emitCode(
     if (outputTypesFieldsArgsToGenerate.length > 0) {
       log("Generating output types args...");
       outputTypesFieldsArgsToGenerate.forEach(async field => {
-        generateArgsTypeClassFromArgs(
+        generateArgsTypeClassFromArgs_Server(
           project,
           path.resolve(resolversDirPath, outputsFolderName),
           field.args,
@@ -266,7 +282,7 @@ export default async function emitCode(
       relationModelData.relationFields
         .filter(field => field.argsTypeName)
         .forEach(async field => {
-          generateArgsTypeClassFromArgs(
+          generateArgsTypeClassFromArgs_Server(
             project,
             resolverDirPath,
             field.outputTypeField.args,
@@ -328,7 +344,7 @@ export default async function emitCode(
       relationModelsWithArgs.length > 0,
     );
   }
-
+// ********************************************************************************************************************
   if (dmmfDocument.shouldGenerateBlock("crudResolvers")) {
     log("Generating crud resolvers...");
     console.log(dmmfDocument.modelMappings);
@@ -336,7 +352,15 @@ export default async function emitCode(
       const model = dmmfDocument.datamodel.models.find(
         model => model.name === mapping.modelName,
       )!;
-      generateCrudResolverClassFromMapping(
+      generateCrudResolverClassFromMapping_Server(
+        project,
+        baseDirPath,
+        mapping,
+        model,
+        dmmfDocument,
+        options,
+      );
+      generateCrudTypeDefClassFromMapping_GqlServer(
         project,
         baseDirPath,
         mapping,
@@ -348,7 +372,7 @@ export default async function emitCode(
         const model = dmmfDocument.datamodel.models.find(
           model => model.name === mapping.modelName,
         )!;
-        generateActionResolverClass(
+        generateActionResolverClass_Server(
           project,
           baseDirPath,
           model,
@@ -374,7 +398,7 @@ export default async function emitCode(
       path.resolve(
         baseDirPath,
         resolversFolderName,
-        crudResolversFolderName,
+        crudFolderName,
         "resolvers-crud.index.ts",
       ),
       undefined,
@@ -384,11 +408,25 @@ export default async function emitCode(
       crudResolversBarrelExportSourceFile,
       generateMappingData,
     );
+    const crudTypeDefsBarrelExportSourceFile = project.createSourceFile(
+      path.resolve(
+        baseDirPath,
+        typeDefsFolderName,
+        crudFolderName,
+        "typedefs-crud.index.ts",
+      ),
+      undefined,
+      { overwrite: true },
+    );
+    generateTypeDefsBarrelFile(
+      crudTypeDefsBarrelExportSourceFile,
+      generateMappingData,
+    );
     const crudResolversActionsBarrelExportSourceFile = project.createSourceFile(
       path.resolve(
         baseDirPath,
         resolversFolderName,
-        crudResolversFolderName,
+        crudFolderName,
         "resolvers-actions.index.ts",
       ),
       undefined,
@@ -402,13 +440,24 @@ export default async function emitCode(
       path.resolve(
         baseDirPath,
         resolversFolderName,
-        crudResolversFolderName,
+        crudFolderName,
         "index.ts",
       ),
       undefined,
       { overwrite: true },
     );
     generateResolversIndexFile(crudResolversIndexSourceFile, "crud", true);
+    const crudTypeDefsIndexSourceFile = project.createSourceFile(
+      path.resolve(
+        baseDirPath,
+        typeDefsFolderName,
+        crudFolderName,
+        "index.ts",
+      ),
+      undefined,
+      { overwrite: true },
+    );
+    generateTypeDefsIndexFile(crudTypeDefsIndexSourceFile, "crud", true);
 
     log("Generating crud resolvers args...");
     dmmfDocument.modelMappings.forEach(async mapping => {
@@ -423,11 +472,11 @@ export default async function emitCode(
         const resolverDirPath = path.resolve(
           baseDirPath,
           resolversFolderName,
-          crudResolversFolderName,
+          crudFolderName,
           model.typeName,
         );
         actionsWithArgs.forEach(async action => {
-          generateArgsTypeClassFromArgs(
+          generateArgsTypeClassFromArgs_Server(
             project,
             resolverDirPath,
             action.method.args,
@@ -444,13 +493,40 @@ export default async function emitCode(
           barrelExportSourceFile,
           actionsWithArgs.map(it => it.argsTypeName!),
         );
+
+        // ********** Generate args for typedefs ********
+
+        const typedefDirPath = path.resolve(
+          baseDirPath,
+          typeDefsFolderName,
+          crudFolderName,
+          model.typeName,
+        );
+        actionsWithArgs.forEach(async action => {
+          generateArgsTypeTypeDefFromArgs_Server(
+            project,
+            typedefDirPath,
+            action.method.args,
+            action.argsTypeName!,
+            dmmfDocument,
+          );
+        });
+        const barrelExportSourceFile2 = project.createSourceFile(
+          path.resolve(typedefDirPath, argsFolderName, "index.ts"),
+          undefined,
+          { overwrite: true },
+        );
+        generateArgsBarrelFile(
+          barrelExportSourceFile2,
+          actionsWithArgs.map(it => it.argsTypeName!),
+        );
       }
     });
     const crudResolversArgsIndexSourceFile = project.createSourceFile(
       path.resolve(
         baseDirPath,
         resolversFolderName,
-        crudResolversFolderName,
+        crudFolderName,
         "args.index.ts",
       ),
       undefined,
@@ -458,6 +534,25 @@ export default async function emitCode(
     );
     generateArgsIndexFile(
       crudResolversArgsIndexSourceFile,
+      dmmfDocument.modelMappings
+        .filter(mapping =>
+          mapping.actions.some(it => it.argsTypeName !== undefined),
+        )
+        .map(mapping => mapping.modelTypeName),
+    );
+    // ********** Generate args for typedefs ********
+    const crudTypeDefsArgsIndexSourceFile = project.createSourceFile(
+      path.resolve(
+        baseDirPath,
+        typeDefsFolderName,
+        crudFolderName,
+        "args.index.ts",
+      ),
+      undefined,
+      { overwrite: true },
+    );
+    generateArgsIndexFile(
+      crudTypeDefsArgsIndexSourceFile,
       dmmfDocument.modelMappings
         .filter(mapping =>
           mapping.actions.some(it => it.argsTypeName !== undefined),
@@ -472,7 +567,7 @@ export default async function emitCode(
     undefined,
     { overwrite: true },
   );
-  generateEnhanceMap(
+  generateEnhanceMap_GqlServer(
     enhanceSourceFile,
     dmmfDocument,
     dmmfDocument.modelMappings,
@@ -488,7 +583,15 @@ export default async function emitCode(
     undefined,
     { overwrite: true },
   );
-  generateCustomScalars(scalarsSourceFile, dmmfDocument.options);
+  generateCustomScalars_GqlServer(scalarsSourceFile, dmmfDocument.options);
+
+  log("Generate custom types");
+  const typesSourceFile = project.createSourceFile(
+    baseDirPath + "/types.ts",
+    undefined,
+    { overwrite: true },
+  );
+  generateTypesFile_GqlServer(typesSourceFile, dmmfDocument.options);
 
   log("Generate custom helpers");
   const helpersSourceFile = project.createSourceFile(
@@ -496,7 +599,7 @@ export default async function emitCode(
     undefined,
     { overwrite: true },
   );
-  generateHelpersFile(helpersSourceFile, dmmfDocument.options);
+  generateHelpersFile_GqlServer(helpersSourceFile, dmmfDocument.options);
 
   log("Generating index file");
   const indexSourceFile = project.createSourceFile(
@@ -504,14 +607,13 @@ export default async function emitCode(
     undefined,
     { overwrite: true },
   );
-  generateIndexFile(
+  generateIndexFile_GqlServer(
     indexSourceFile,
     dmmfDocument.relationModels.length > 0,
     dmmfDocument.options.blocksToEmit,
   );
 
   log("Emitting generated code files");
-  console.log(">>>>emitTranspiledCode", emitTranspiledCode);
   if (emitTranspiledCode) {
     await project.emit();
   } else {

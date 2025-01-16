@@ -58,7 +58,7 @@ export default function generateRelationsResolverClassesFromModel(
   generateModelsImports(
     sourceFile,
     [...relationFields.map(field => field.type), model.typeName],
-    3,
+    2,
   );
 
   const argTypeNames = relationFields

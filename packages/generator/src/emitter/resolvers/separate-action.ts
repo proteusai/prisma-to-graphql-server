@@ -1,21 +1,21 @@
-import { Project } from 'ts-morph';
 import path from 'path';
+import { Project } from 'ts-morph';
 
-import { resolversFolderName, crudResolversFolderName } from '../config';
-import {
-  generateTypeGraphQLImport,
-  generateArgsImports,
-  generateModelsImports,
-  generateOutputsImports,
-  generateGraphQLInfoImport,
-  generateHelpersFileImport,
-} from '../imports';
-import { generateCrudResolverClassMethodDeclaration } from './helpers';
+import { crudFolderName, resolversFolderName } from '../config';
 import { DmmfDocument } from '../dmmf/document';
 import { DMMF } from '../dmmf/types';
+import {
+  generateArgsImports,
+  generateGraphQLInfoImport,
+  generateHelpersFileImport,
+  generateModelsImports,
+  generateOutputsImports,
+  generateTypesFileImport
+} from '../imports';
 import { GeneratorOptions } from '../options';
+import { generateCrudResolverClassMethodDeclaration_Server } from './helpers';
 
-export default function generateActionResolverClass(
+export default function generateActionResolverClass_Server(
   project: Project,
   baseDirPath: string,
   model: DMMF.Model,
@@ -28,7 +28,7 @@ export default function generateActionResolverClass(
     path.resolve(
       baseDirPath,
       resolversFolderName,
-      crudResolversFolderName,
+      crudFolderName,
       model.typeName,
       `${action.actionResolverName}.ts`,
     ),
@@ -36,7 +36,6 @@ export default function generateActionResolverClass(
     { overwrite: true },
   );
 
-  generateTypeGraphQLImport(sourceFile);
   generateGraphQLInfoImport(sourceFile);
   if (action.argsTypeName) {
     generateArgsImports(sourceFile, [action.argsTypeName], 0);
@@ -46,7 +45,7 @@ export default function generateActionResolverClass(
     [model.typeName, action.outputTypeName].filter(typeName =>
       dmmfDocument.isModelTypeName(typeName),
     ),
-    3,
+    2,
   );
   generateOutputsImports(
     sourceFile,
@@ -56,18 +55,19 @@ export default function generateActionResolverClass(
     2,
   );
   generateHelpersFileImport(sourceFile, 3);
+  generateTypesFileImport(sourceFile, 3);
 
   sourceFile.addClass({
     name: action.actionResolverName,
     isExported: true,
-    decorators: [
-      {
-        name: "TypeGraphQL.Resolver",
-        arguments: [`_of => ${model.typeName}`],
-      },
-    ],
+    // decorators: [
+    //   {
+    //     name: "TypeGraphQL.Resolver",
+    //     arguments: [`_of => ${model.typeName}`],
+    //   },
+    // ],
     methods: [
-      generateCrudResolverClassMethodDeclaration(
+      generateCrudResolverClassMethodDeclaration_Server(
         action,
         mapping,
         dmmfDocument,
